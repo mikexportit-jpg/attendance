@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Add Advance Salary{% endblock %}
+
+{% block content %}
+<h2>Add Advance Salary</h2>
+<form method="POST">
+  <div class="mb-3">
+    <label>User</label>
+    <select class="form-select select2" name="user_id" required>
+      {% for user in users %}
+        <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label>Amount ($)</label>
+    <input type="number" step="0.01" class="form-control" name="amount" required>
+  </div>
+  <button type="submit" class="btn btn-success">Add Advance</button>
+</form>
+
+<!-- Initialize Select2 -->
+<script>
+  $(document).ready(function() {
+    $('.select2').select2({
+      placeholder: "Select an employee",
+      allowClear: true,
+      width: '100%'
+    });
+  });
+</script>
+{% endblock %}

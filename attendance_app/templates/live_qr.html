@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Attendance QR</title>
+</head>
+<body style="text-align:center">
+
+<h2>Scan to Clock In / Out</h2>
+<img id="qrImage" width="300">
+
+<script>
+function refreshQR() {
+    fetch("/admin/live-qr")
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById("qrImage").src =
+                "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" +
+                encodeURIComponent(
+                    window.location.origin + "/qr/clock?token=" + data.token
+                );
+        });
+}
+
+refreshQR();
+setInterval(refreshQR, 15000); // changes every 15 seconds
+</script>
+
+</body>
+</html>

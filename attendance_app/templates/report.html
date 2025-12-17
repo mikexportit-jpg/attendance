@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Reports{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4 fw-bold text-primary">Attendance & Salary Reports</h2>
+
+  <!-- Filters -->
+  <form method="GET" class="row g-3 align-items-end mb-4">
+    <div class="col-md-3">
+      <label for="start_date" class="form-label fw-semibold">Start Date</label>
+      <input type="date" name="start_date" id="start_date" class="form-control" value="{{ request.args.get('start_date', current_date) }}">
+    </div>
+    <div class="col-md-3">
+      <label for="end_date" class="form-label fw-semibold">End Date</label>
+      <input type="date" name="end_date" id="end_date" class="form-control" value="{{ request.args.get('end_date', current_date) }}">
+    </div>
+    {% if current_user.role == 'manager' or current_user.is_admin %}
+    <div class="col-md-3">
+      <label for="user_id" class="form-label fw-semibold">Employee</label>
+      <select name="user_id" id="user_id" class="form-select">
+        <option value="" {% if not request.args.get('user_id') %}selected{% endif %}>All Employees</option>
+        {% for user in users %}
+          <option value="{{ user.id }}" {% if request.args.get('user_id') == user.id|string %}selected{% endif %}>{{ user.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-md-3">
+      <button type="submit" class="btn btn-primary w-100 fw-semibold">Apply Filters</button>
+    </div>
+  </form>
+
+  <!-- Export & Add Attendance -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <a href="{{ url_for('leave_requests_export', file_type='pdf', **request.args.to_dict()) }}" class="btn btn-outline-secondary me-2" title="Export as PDF">
+        <i class="bi bi-file-earmark-pdf-fill"></i> PDF
+      </a>
+      <a href="{{ url_for('export_report_excel_monthly', **request.args.to_dict()) }}" target="_blank" class="btn btn-outline-success" title="Export as Excel">
+        <i class="bi bi-file-earmark-excel-fill"></i> Excel
+      </a>
+    </div>
+    {% if current_user.role == 'manager' or current_user.is_admin %}
+    <a href="{{ url_for('add_attendance') }}" class="btn btn-primary fw-semibold">
+      <i class="bi bi-plus-circle"></i> Add Attendance
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Tabs Navigation -->
+  <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab == 'daily' %}active{% endif %}" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="{{ 'true' if active_tab == 'daily' else 'false' }}">Daily</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab == 'weekly' %}active{% endif %}" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="{{ 'true' if active_tab == 'weekly' else 'false' }}">Weekly</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab == 'monthly' %}active{% endif %}" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button" role="tab" aria-controls="monthly" aria-selected="{{ 'true' if active_tab == 'monthly' else 'false' }}">Monthly</button>
+    </li>
+  </ul>
+
+  <!-- Tab Content -->
+  <div class="tab-content" id="reportTabsContent">
+
+    <!-- Daily Report -->
+    <div class="tab-pane fade {% if active_tab == 'daily' %}show active{% endif %}" id="daily" role="tabpanel" tabindex="0" aria-labelledby="daily-tab">
+      {% if daily_data|length == 0 %}
+      <div class="alert alert-info text-center fst-italic">No daily attendance data found.</div>
+      {% else %}
+      <div class="d-flex justify-content-end mb-2">
+        <a href="{{ url_for('daily_report_print', start_date=request.args.get('start_date', current_date), user_id=request.args.get('user_id')) }}"
+           class="btn btn-sm btn-outline-primary" target="_blank" title="Print Daily Report">
+          <i class="bi bi-printer-fill"></i> Print Daily Report
+        </a>
+      </div>
+      <div class="table-responsive" style="max-height: 600px; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px;">
+        <table class="table table-striped table-hover align-middle mb-0" style="min-width: 900px;">
+          <thead class="table-light">
+            <tr class="text-uppercase text-secondary small">
+              <th>Date</th>
+              <th>Employee</th>
+              <th>Clock In</th>
+              <th>Clock Out</th>
+              <th class="text-end">Regular Hours</th>
+              <th class="text-end">Overtime</th>
+              <th class="text-end">Total Hours</th>
+              <th class="text-end">Late Minutes</th>
+              {% if current_user.role == 'manager' or current_user.is_admin %}
+              <th class="text-center">Actions</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in daily_data %}
+            <tr>
+              <td>{{ row.date }}</td>
+              <td>{{ row.user.name if row.user else 'N/A' }}</td>
+              <td>{{ row.clock_in or '—' }}</td>
+              <td>{{ row.clock_out or '—' }}</td>
+              <td class="text-end">{{ "%.2f"|format(row.regular_hours) }}</td>
+              <td class="text-end">{{ "%.2f"|format(row.overtime or 0) }}</td>
+              <td class="text-end">{{ "%.2f"|format(row.total_hours or 0) }}</td>
+              <td class="text-end">{{ row.late_minutes or 0 }}</td>
+              {% if current_user.role == 'manager' or current_user.is_admin %}
+              <td class="text-center">
+                <a href="{{ url_for('edit_attendance', attendance_id=row.id) }}" class="btn btn-sm btn-primary" title="Edit Attendance"><i class="bi bi-pencil"></i></a>
+                <form action="{{ url_for('delete_attendance', user_id=row.user_id, date=row.date) }}" method="POST" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this attendance?');" title="Delete Attendance"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Weekly Report -->
+    <div class="tab-pane fade {% if active_tab == 'weekly' %}show active{% endif %}" id="weekly" role="tabpanel" tabindex="0" aria-labelledby="weekly-tab">
+      {% if weekly_data|length == 0 %}
+      <div class="alert alert-info text-center fst-italic">No weekly attendance data found.</div>
+      {% else %}
+      <div class="table-responsive" style="max-height: 600px; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px;">
+        <table class="table table-striped table-hover align-middle mb-0" style="min-width: 700px;">
+          <thead class="table-light">
+            <tr class="text-uppercase text-secondary small">
+              <th>Week</th>
+              <th>Employee</th>
+              <th class="text-end">Total Hours</th>
+              <th class="text-end">Overtime</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in weekly_data %}
+            <tr>
+              <td>{{ row.week }}</td>
+              <td>{{ row.user.name if row.user else 'N/A' }}</td>
+              <td class="text-end">{{ "%.2f"|format(row.total_hours) }}</td>
+              <td class="text-end">{{ "%.2f"|format(row.overtime or 0) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Monthly Report -->
+    <div class="tab-pane fade {% if active_tab == 'monthly' %}show active{% endif %}" id="monthly" role="tabpanel" tabindex="0" aria-labelledby="monthly-tab">
+      {% if monthly_data|length == 0 %}
+      <div class="alert alert-info text-center fst-italic">No monthly attendance data found.</div>
+      {% else %}
+      <div class="table-responsive" style="max-height: 600px; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px;">
+        <table class="table table-striped table-hover align-middle mb-0" style="min-width: 1150px;">
+          <thead class="table-light">
+            <tr class="text-uppercase text-secondary small">
+              <th class="text-center" style="width: 80px;">Export</th>
+              <th>Month</th>
+              <th>Employee</th>
+              <th class="text-end">Total Hours</th>
+              <th class="text-end">Regular Hours</th>
+              <th class="text-end">Hourly Rate</th>
+              <th class="text-end">Regular Pay</th>
+              <th class="text-end">Overtime</th>
+              <th class="text-end">Overtime Rate</th>
+              <th class="text-end">Overtime Pay</th>
+              <th class="text-end fw-semibold text-primary">Working Salary</th>
+              <th class="text-end text-danger">Deductions</th>
+              <th class="text-end text-warning">Advances</th>
+              <th class="text-end fw-semibold text-success">Total Salary</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in monthly_data %}
+            <tr>
+              <td class="text-center">
+                <a href="{{ url_for('print_report', user_id=row.user.id, month=row.month) }}" class="btn btn-sm btn-outline-primary" target="_blank" title="Print Report">
+                  <i class="bi bi-printer-fill"></i>
+                </a>
+              </td>
+              <td>{{ row.month }}</td>
+              <td>{{ row.user.name if row.user else 'N/A' }}</td>
+              <td class="text-end">{{ "%.2f"|format(row.total_hours) }}</td>
+              <td class="text-end">{{ "%.2f"|format(row.regular_hours) }}</td>
+              <td class="text-end">{{ row.hourly_rate }} {{ currency }}</td>
+              <td class="text-end">{{ row.regular_pay }} {{ currency }}</td>
+              <td class="text-end">{{ "%.2f"|format(row.overtime) }}</td>
+              <td class="text-end">{{ row.overtime_rate }} {{ currency }}</td>
+              <td class="text-end">{{ row.overtime_payment }} {{ currency }}</td>
+              <td class="text-end fw-semibold text-primary">{{ row.working_salary }} {{ currency }}</td>
+              <td class="text-end text-danger">-{{ row.deductions }} {{ currency }}</td>
+              <td class="text-end text-warning">-{{ row.advances }} {{ currency }}</td>
+              <td class="text-end fw-semibold text-success">{{ row.total_salary }} {{ currency }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

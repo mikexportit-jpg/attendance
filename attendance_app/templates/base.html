@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}Dashboard - Mik Export{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <!-- Select2 -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f7fa;
+      color: #333;
+    }
+
+    #sidebar {
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 250px;
+      background-color: #1e3c72;
+      color: white;
+      transition: width 0.3s ease;
+      overflow-y: auto;
+      z-index: 1030;
+    }
+
+    #sidebar.collapsed { width: 70px; }
+
+    #sidebar .nav-link {
+      color: #b8c7d9;
+      font-weight: 500;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: background-color 0.2s ease;
+      white-space: nowrap;
+    }
+
+    #sidebar .nav-link:hover, #sidebar .nav-link.active {
+      background-color: #2a5298;
+      color: #fff;
+    }
+
+    #sidebar .nav-link i {
+      font-size: 1.25rem;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    #sidebar .nav-link span {
+      transition: opacity 0.3s ease;
+    }
+
+    #sidebar.collapsed .nav-link span {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #sidebar .sidebar-brand {
+      font-weight: 700;
+      font-size: 1.4rem;
+      padding: 1.5rem 1.25rem;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+      user-select: none;
+      text-align: center;
+    }
+
+    #sidebar.collapsed .sidebar-brand {
+      font-size: 1.1rem;
+      padding: 1.5rem 0.5rem;
+    }
+
+    #topbar {
+      height: 56px;
+      background: white;
+      padding: 0 1rem;
+      box-shadow: 0 2px 5px rgb(0 0 0 / 0.1);
+      position: fixed;
+      left: 250px;
+      right: 0;
+      top: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: left 0.3s ease;
+      z-index: 1040;
+    }
+
+    #topbar.collapsed { left: 70px; }
+
+    #topbar .btn-toggle-sidebar {
+      font-size: 1.5rem;
+      color: #1e3c72;
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+
+    #topbar .page-title {
+      font-weight: 600;
+      font-size: 1.2rem;
+      color: #1e3c72;
+    }
+
+    #main-content {
+      margin-top: 56px;
+      margin-left: 250px;
+      padding: 2rem 3rem;
+      transition: margin-left 0.3s ease;
+      min-height: calc(100vh - 56px);
+      background: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 0 15px rgb(0 0 0 / 0.05);
+    }
+
+    #main-content.collapsed {
+      margin-left: 70px;
+      padding-left: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      #sidebar {
+        position: fixed;
+        z-index: 1050;
+        transform: translateX(-100%);
+        width: 250px;
+        transition: transform 0.3s ease;
+      }
+
+      #sidebar.show { transform: translateX(0); }
+
+      #topbar { left: 0 !important; }
+
+      #main-content {
+        margin-left: 0 !important;
+        padding: 1.5rem 1.5rem !important;
+      }
+    }
+  </style>
+</head>
+
+<body data-authenticated="{{ 'true' if current_user.is_authenticated else 'false' }}">
+  {% if current_user.is_authenticated %}
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div class="sidebar-brand text-white">Mik Export</div>
+    <ul class="nav flex-column mt-3">
+      <li class="nav-item">
+        <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+          <i class="bi bi-speedometer2"></i> <span>Dashboard</span>
+        </a>
+      </li>
+      {% if current_user.role == 'manager' %}
+      <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('show_admin_qr') }}">
+        <i class="bi bi-qr-code"></i> QR Scan
+    </a>
+</li>
+        <li class="nav-item"><a href="{{ url_for('users') }}" class="nav-link {% if request.endpoint == 'users' %}active{% endif %}"><i class="bi bi-people"></i> <span>Users</span></a></li>
+        <li class="nav-item"><a href="{{ url_for('advances') }}" class="nav-link {% if request.endpoint == 'advances' %}active{% endif %}"><i class="bi bi-wallet2"></i> <span>Advance Salary</span></a></li>
+        <li class="nav-item"><a href="{{ url_for('manage_deductions') }}" class="nav-link {% if request.endpoint == 'manage_deductions' %}active{% endif %}"><i class="bi bi-cash-stack"></i> <span>Deductions</span></a></li>
+        <li class="nav-item"><a href="{{ url_for('report') }}" class="nav-link {% if request.endpoint == 'report' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i> <span>Reports</span></a></li>
+        <li class="nav-item"><a href="{{ url_for('overtime_reports') }}" class="nav-link {% if request.endpoint == 'overtime_reports' %}active{% endif %}"><i class="bi bi-clock-history"></i> <span>Overtime Reports</span></a></li>
+        <li class="nav-item"><a href="{{ url_for('break_reports') }}" class="nav-link {% if request.endpoint == 'break_reports' %}active{% endif %}"><i class="bi bi-clock-history"></i> <span>Break Reports</span></a></li>
+        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'import_attendance' %}active{% endif %}" href="{{ url_for('import_attendance') }}"><i class="bi bi-file-earmark-arrow-up"></i> <span>Import Attendance</span></a></li>
+      {% else %}
+        <li class="nav-item"><a href="{{ url_for('report') }}" class="nav-link {% if request.endpoint == 'report' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i> <span>Attendance Report</span></a></li>
+      {% endif %}
+      <li class="nav-item mt-auto">
+        <a href="{{ url_for('auth.logout') }}" class="nav-link text-danger"><i class="bi bi-box-arrow-right"></i> <span>Logout</span></a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Topbar -->
+  <header id="topbar">
+    <button class="btn-toggle-sidebar" id="sidebarToggle"><i class="bi bi-list"></i></button>
+    <div class="page-title">Dashboard</div>
+  </header>
+  {% endif %}
+
+  <!-- Main -->
+  <main id="main-content" class="{% if not current_user.is_authenticated %}mx-auto mt-5{% endif %}">
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="container mt-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Sidebar toggle logic -->
+  <script>
+    const isAuthenticated = document.body.dataset.authenticated === 'true';
+    if (isAuthenticated) {
+      const sidebar = document.getElementById('sidebar');
+      const sidebarToggle = document.getElementById('sidebarToggle');
+      const topbar = document.getElementById('topbar');
+      const mainContent = document.getElementById('main-content');
+
+      sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        topbar.classList.toggle('collapsed');
+        mainContent.classList.toggle('collapsed');
+      });
+    }
+  </script>
+
+  <!-- Optional Block for Page Specific Scripts -->
+  {% block scripts %}{% endblock %}
+</body>
+</html>

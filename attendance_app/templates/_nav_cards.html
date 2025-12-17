@@ -1,0 +1,25 @@
+<div class="row g-4 justify-content-center mb-4">
+  {% macro nav_card(endpoint, title, subtitle) -%}
+    <div class="col-6 col-md-3">
+      <div class="card nav-card h-100 position-relative">
+        <div class="card-body text-center">
+          <h5>{{ title }}</h5>
+          <p>{{ subtitle }}</p>
+        </div>
+        <a href="{{ url_for(endpoint) }}" class="stretched-link"></a>
+      </div>
+    </div>
+  {%- endmacro %}
+
+  {{ nav_card('dashboard',        'Dashboard',        'Overview & stats') }}
+  {{ nav_card('leave_requests',   'Leave Requests',   'Manage time off') }}
+  {{ nav_card('overtime_reports', 'Overtime Reports', 'Review extra hours') }}
+  {{ nav_card('report',           'Reports',          'Daily / weekly / monthly') }}
+
+  {% if current_user.role == 'manager' %}
+    {{ nav_card('users',         'Users',           'Manage employees') }}
+    {{ nav_card('advances',      'Advance Salary',  'Handle advance requests') }}
+  {% endif %}
+
+  {{ nav_card('auth.logout',     'Logout',          'Sign out securely') }}
+</div>

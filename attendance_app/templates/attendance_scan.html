@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Attendance Scan{% endblock %}
+
+{% block content %}
+<div class="container text-center py-5">
+  <h1>Employee Attendance Scan</h1>
+  
+  <p id="message" class="fs-4 my-4">{{ message }}</p>
+  
+  <!-- Hidden form to submit UID -->
+  <form id="scanForm" method="POST" autocomplete="off">
+    <input type="text" name="uid" id="uidInput" autofocus autocomplete="off" style="font-size:24px; width:300px; text-align:center;" placeholder="Scan your NFC card here" />
+    <button type="submit" class="btn btn-primary mt-3">Submit</button>
+  </form>
+</div>
+
+<script>
+  const input = document.getElementById('uidInput');
+  const form = document.getElementById('scanForm');
+
+  // Auto-submit form as soon as input changes (i.e., NFC card scanned)
+  input.addEventListener('input', () => {
+    if(input.value.length >= 4) {  // Adjust length threshold as needed
+      form.submit();
+    }
+  });
+
+  // Keep input focused so NFC scans go to it
+  window.onload = () => {
+    input.focus();
+  };
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Break Reports{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">🕒 Employee Break Reports</h2>
+
+  <form method="get" class="row g-3 mb-4">
+    <div class="col-md-3">
+      <label class="form-label">Start Date</label>
+      <input type="date" name="start_date" class="form-control" 
+             value="{{ request.args.get('start_date', current_date) }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">End Date</label>
+      <input type="date" name="end_date" class="form-control" 
+             value="{{ request.args.get('end_date', current_date) }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Employee</label>
+      <select name="employee_id" class="form-select">
+        <option value="">All Employees</option>
+        {% for emp in employees %}
+          <option value="{{ emp.id }}" {% if request.args.get('employee_id') == emp.id|string %}selected{% endif %}>
+            {{ emp.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary w-100">🔍 Filter</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Employee</th>
+          <th>Date</th>
+          <th>Start Time</th>
+          <th>End Time</th>
+          <th>Duration (min)</th>
+          <th>Deduction ($)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in breaks %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ b.user.name }}</td>
+            <td>{{ b.date }}</td>
+            <td>{{ b.start_time.strftime('%H:%M:%S') if b.start_time else '-' }}</td>
+            <td>{{ b.end_time.strftime('%H:%M:%S') if b.end_time else '-' }}</td>
+            <td>{{ b.duration }}</td>
+            <td>${{ b.deduction }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

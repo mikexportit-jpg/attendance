@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Edit User{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2>Edit User</h2>
+  <form method="POST">
+    <div class="mb-3">
+      <label for="name" class="form-label">Name</label>
+      <input type="text" class="form-control" id="name" name="name" value="{{ user.name }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="username" class="form-label">Username</label>
+      <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="role" class="form-label">Role</label>
+      <select class="form-select" id="role" name="role" required>
+        <option value="employee" {% if user.role == 'employee' %}selected{% endif %}>Employee</option>
+        <option value="manager" {% if user.role == 'manager' %}selected{% endif %}>Manager</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="salary" class="form-label">Monthly Salary</label>
+      <input type="number" step="0.01" class="form-control" id="salary" name="salary" value="{{ user.salary_per_month }}" required>
+    </div>
+    <div class="mb-3">
+  <label for="serial_number">NFC Serial Number</label>
+<input type="text" name="serial_number" id="serial_number" class="form-control" value="{{ user.serial_number if user else '' }}" />
+</div>
+    <div class="mb-3">
+      <label for="password" class="form-label">Password (leave blank to keep current)</label>
+      <input type="password" class="form-control" id="password" name="password">
+    </div>
+    <button type="submit" class="btn btn-primary">Update User</button>
+    <a href="{{ url_for('users') }}" class="btn btn-secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

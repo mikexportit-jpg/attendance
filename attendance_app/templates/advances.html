@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}Advance Salary{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">💰 Advance Salary Records</h2>
+
+  <!-- Filter Form -->
+  <form method="GET" class="row g-3 mb-4 align-items-end">
+    <div class="col-md-3">
+      <label for="start_date" class="form-label">Start Date</label>
+      <input type="date" name="start_date" id="start_date" class="form-control"
+             value="{{ start_date }}">
+    </div>
+    <div class="col-md-3">
+      <label for="end_date" class="form-label">End Date</label>
+      <input type="date" name="end_date" id="end_date" class="form-control"
+             value="{{ end_date }}">
+    </div>
+    {% if current_user.role == 'manager' or current_user.is_admin %}
+    <div class="col-md-3">
+      <label for="user_id" class="form-label">Employee</label>
+      <select name="user_id" id="user_id" class="form-select select2">
+        <option value="">All Employees</option>
+        {% for user in users %}
+          <option value="{{ user.id }}" {% if user.id|string == selected_user_id %}selected{% endif %}>{{ user.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-md-3">
+      <button type="submit" class="btn btn-primary w-100">Filter</button>
+    </div>
+  </form>
+
+  <!-- Action Buttons -->
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="{{ url_for('add_advance') }}" class="btn btn-success">
+      ➕ Add Advance Salary
+    </a>
+    <div>
+      <a href="{{ url_for('download_advance_template') }}" class="btn btn-outline-secondary">
+        📥 Download Excel Template
+      </a>
+    </div>
+  </div>
+
+  <!-- Excel Import Form -->
+  <div class="mb-4">
+    <form method="POST" action="{{ url_for('import_advance_salaries') }}" enctype="multipart/form-data" class="row g-3 align-items-center">
+      <div class="col-auto">
+        <label for="excel_file" class="form-label mb-0">📄 Import from Excel:</label>
+      </div>
+      <div class="col-md-4">
+        <input type="file" name="excel_file" id="excel_file" accept=".xlsx, .xls" class="form-control" required>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Import</button>
+      </div>
+    </form>
+  </div>
+  
+  {% if total_advance_amount is defined %}
+<div class="alert alert-info">
+  <strong>Total Advance Amount:</strong> ${{ "%.2f"|format(total_advance_amount) }}
+</div>
+{% endif %}
+
+
+  <!-- Advance Salary Table -->
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Employee</th>
+          <th>Amount</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for adv in advance_salaries %}
+        <tr>
+          <td>{{ adv.user.name }}</td>
+          <td>${{ "%.2f"|format(adv.amount) }}</td>
+          <td>{{ adv.date.strftime('%Y-%m-%d') }}</td>
+        </tr>
+        {% endfor %}
+        {% if advance_salaries|length == 0 %}
+        <tr>
+          <td colspan="3" class="text-center">No advance salary records found for selected filters.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  $(document).ready(function() {
+    $('.select2').select2({
+      width: '100%',
+      placeholder: 'Select employee',
+      allowClear: true
+    });
+  });
+</script>
+{% endblock %}

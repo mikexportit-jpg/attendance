@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Import Attendance{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">📥 Import Attendance from Excel</h2>
+
+  <form method="POST" enctype="multipart/form-data" class="border p-4 rounded bg-light">
+    <div class="mb-3">
+      <label for="file" class="form-label">Upload Excel File (.xlsx)</label>
+      <input type="file" name="file" id="file" class="form-control" accept=".xlsx" required>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">📤 Import</button>
+      <a href="{{ url_for('download_template') }}" class="btn btn-outline-primary">📥 Download Excel Template</a>
+    </div>
+  </form>
+
+  <div class="mt-4 alert alert-info">
+    <strong>Required Excel format:</strong>
+    <ul class="mb-0">
+      <li><code>username</code> (exact match)</li>
+      <li><code>date</code> (YYYY-MM-DD)</li>
+      <li><code>clock_in</code> (HH:MM:SS)</li>
+      <li><code>clock_out</code> (HH:MM:SS)</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

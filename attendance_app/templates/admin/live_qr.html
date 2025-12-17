@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Attendance QR</title>
+</head>
+<body style="text-align:center">
+<h2>Scan to Clock In / Out</h2>
+<img src="{{ url_for('qr_image') }}" alt="QR Code">
+
+<script>
+function refreshQR() {
+    document.getElementById("qrImage").src = "/admin/live-qr?ts=" + new Date().getTime();
+}
+
+// Refresh every 15 seconds
+setInterval(refreshQR, 15000);
+</script>
+</body>
+</html>
