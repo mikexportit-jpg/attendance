@@ -1729,20 +1729,15 @@ def admin_live_qr():
 @app.route('/admin/qr-image')
 @login_required
 def qr_image():
-    # Generate a new unique token
     token = secrets.token_urlsafe(16)
     
-    # Optionally save token to DB for validation
+    # Save token to DB for validation
     qr = QRCodeToken(token=token)
     db.session.add(qr)
     db.session.commit()
     
-    # Full URL to scan route on your deployed app
-    base_url = "https://attendance-64n0.onrender.com/scan"
-    full_url = f"{base_url}?token={token}"
-    
-    # Create QR code with full URL
-    qr_img = qrcode.make(full_url)
+    # Create QR code
+    qr_img = qrcode.make(token)
     
     # Save to memory buffer
     img_io = io.BytesIO()
