@@ -861,52 +861,44 @@ def qr_code():
 @login_required
 def scan_page():
     token = request.args.get("token")
+    
     if not token:
         return render_template("scan.html")  # just show QR if no token
-
-    # Check if token exists and is unused
-    qr_entry = QRCodeToken.query.filter_by(token=token, used=0).first()
+    
+    # Find the token in DB
+    qr_entry = QRCodeToken.query.filter_by(token=token).first()
+    
     if not qr_entry:
         flash("Invalid or expired QR token.", "danger")
         return render_template("scan.html")
-
+    
     today = datetime.today().date()
     now = datetime.now()
 
-    # Get today's attendance for this user
+    # Check if user already has attendance today
     attendance = Attendance.query.filter_by(user_id=current_user.id, date=today).first()
-
+    
     if not attendance:
-        # No attendance yet → Clock In
+        # Clock in
         attendance = Attendance(
             user_id=current_user.id,
             date=today,
             clock_in=now.time()
         )
         db.session.add(attendance)
-        db.session.commit()
         flash("Clocked In successfully!", "success")
-
-    elif attendance.clock_in and not attendance.clock_out:
-        # Already clocked in → Clock Out
+    elif not attendance.clock_out:
+        # Clock out
         attendance.clock_out = now.time()
-        db.session.commit()
         flash("Clocked Out successfully!", "success")
-
-    elif not attendance.clock_in:
-        # Rare case: missing clock_in
-        attendance.clock_in = now.time()
-        db.session.commit()
-        flash("Clocked In successfully!", "success")
-
     else:
-        # Both clock_in and clock_out exist → nothing to do
-        flash("You have already completed your attendance today.", "info")
-
-    # Mark the QR token as used
-    qr_entry.used = 1
+        flash("You already clocked in and out today.", "info")
+    
+    # **Expire the token immediately**
+    db.session.delete(qr_entry)
+    
     db.session.commit()
-
+    
     return render_template("scan.html", token=token)
 
 @app.route('/register-device', methods=['GET', 'POST'])
@@ -1741,12 +1733,16 @@ def qr_image():
     token = secrets.token_urlsafe(16)
     
     # Optionally save token to DB for validation
-    # qr = QRCodeToken(token=token)
-    # db.session.add(qr)
-    # db.session.commit()
+    qr = QRCodeToken(token=token)
+    db.session.add(qr)
+    db.session.commit()
     
-    # Create QR code
-    qr_img = qrcode.make(token)
+    # Full URL to scan route on your deployed app
+    base_url = "https://attendance-64n0.onrender.com/scan"
+    full_url = f"{base_url}?token={token}"
+    
+    # Create QR code with full URL
+    qr_img = qrcode.make(full_url)
     
     # Save to memory buffer
     img_io = io.BytesIO()
