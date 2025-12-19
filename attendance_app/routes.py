@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file, jsonify, make_response
+from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file, jsonify, make_response, abort
 from flask_login import login_required, current_user
 from datetime import datetime, date, time, timedelta
 from sqlalchemy import func, cast, Date, and_
@@ -12,7 +12,7 @@ from attendance_app.models import (
     User, Attendance, AdvanceSalary, LeaveRequest, Overtime, BreakSession, QRCodeToken, Deduction
 )
 from attendance_app.forms import DeductionForm
-
+from functools import wraps
 
 api_bp = Blueprint('api', __name__)
 
@@ -857,8 +857,7 @@ def qr_code():
     buf.seek(0)
     return send_file(buf, mimetype='image/png')
 
-@app.route("/scan")
-@login_required
+@api_bp.route('/scan')
 def scan_page():
     token = request.args.get("token")
     
@@ -901,19 +900,17 @@ def scan_page():
     
     return render_template("scan.html", token=token)
 
-@app.route('/register-device', methods=['GET', 'POST'])
-@login_required
+@api_bp.route("/api/register-device", methods=["POST"])
 def register_device():
-    if request.method == 'POST':
-        device_id = request.form['device_id']
-        current_user.device_id = device_id
-        db.session.commit()
+    data = request.get_json()
+    device_id = data.get("device_id")
 
-        response = redirect(url_for('dashboard'))
-        response.set_cookie('device_id', device_id, max_age=60*60*24*365)
-        return response
+    if not device_id:
+        return jsonify({"error": "Missing device ID"}), 400
 
-    return render_template('register_device.html')
+    response = make_response(jsonify({"status": "ok"}))
+    response.set_cookie("device_id", device_id, max_age=60*60*24*365*5)  # 5 years
+    return response
 
 def get_expected_regular_hours(year, month):
     total = 0
@@ -1498,28 +1495,30 @@ def attendance_detail(user_id):
 
     return render_template('attendance_detail.html', message=message)   
 
-@app.route('/update_nfc_uid', methods=['POST'])
-@login_required  # Optional, add your auth logic here
-def update_nfc_uid():
-    user_id = request.form.get('user_id')
-    nfc_uid = request.form.get('nfc_uid').strip() if request.form.get('nfc_uid') else None
+@app.route("/admin/assign-device/<int:user_id>", methods=["POST"])
+@login_required
+def assign_device(user_id):
+    # Get device_id from cookie (employee must scan QR first)
+    device_id = request.cookies.get("device_id")
 
-    user = User.query.get(user_id)
-    if not user:
-        flash("User not found.", "danger")
-        return redirect(url_for('users'))
+    if not device_id:
+        flash("No device detected. Ask the employee to scan the QR first.", "danger")
+        return redirect(url_for("api.manage_devices"))
 
-    # Optional: check if NFC UID is unique
-    if nfc_uid:
-        existing = User.query.filter(User.nfc_uid == nfc_uid, User.id != user.id).first()
-        if existing:
-            flash(f"NFC UID {nfc_uid} is already assigned to another user.", "danger")
-            return redirect(url_for('users'))
 
-    user.nfc_uid = nfc_uid
+    user = User.query.get_or_404(user_id)
+
+    if user.device_id:
+        flash("This employee already has a registered device.", "warning")
+        return redirect(url_for("api.manage_devices"))
+
+
+    user.device_id = device_id
     db.session.commit()
-    flash(f"NFC UID updated for {user.name}.", "success")
-    return redirect(url_for('users'))
+
+    flash(f"Device successfully assigned to {user.username}.", "success")
+    return redirect(url_for("api.manage_devices"))
+
 
 @app.route('/import-advance-salaries', methods=['POST'])
 def import_advance_salaries():
@@ -1726,19 +1725,19 @@ def admin_live_qr():
     # Serve image directly
     return send_file(buf, mimetype='image/png')
 
-@app.route('/admin/qr-image')
-@login_required
+@api_bp.route('/qr-image')
 def qr_image():
     # Generate a new unique token
     token = secrets.token_urlsafe(16)
     
     # Save token to DB
-    qr = QRCodeToken(token=token)
+    qr = QRCodeToken(token=token, used=False)
     db.session.add(qr)
     db.session.commit()
     
     # Full URL that QR will point to
-    full_url = f"https://attendance-64n0.onrender.com/scan?token={token}"
+    #full_url = f"https://attendance-64n0.onrender.com/scan?token={token}"#
+    full_url = url_for("api.scan_action", token=token, _external=True)
     
     # Generate QR code
     qr_img = qrcode.make(full_url)
@@ -1749,3 +1748,78 @@ def qr_image():
     img_io.seek(0)
     
     return send_file(img_io, mimetype='image/png')
+
+@api_bp.route('/scan-action')
+def scan_action():
+    token = request.args.get("token")
+
+    qr_entry = QRCodeToken.query.filter_by(token=token, used=False).first()
+    if not qr_entry:
+        return "Invalid or expired QR code", 400
+
+    # Expire token immediately
+    qr_entry.used = True
+    db.session.commit()
+
+    device_id = request.cookies.get("device_id")
+    if not device_id:
+        return redirect(url_for("register_device"))
+
+    employee = User.query.filter_by(device_id=device_id).first()
+    if not employee:
+        return redirect(url_for("register_device"))
+
+    return process_attendance(employee)
+
+def process_attendance(employee):
+    today = date.today()
+    now = datetime.now().time()
+
+    attendance = Attendance.query.filter_by(
+        user_id=employee.id,
+        date=today
+    ).first()
+
+    if not attendance:
+        attendance = Attendance(
+            user_id=employee.id,
+            date=today,
+            clock_in=now
+        )
+        db.session.add(attendance)
+        db.session.commit()
+        return "Clocked In ✅"
+
+    elif not attendance.clock_out:
+        attendance.clock_out = now
+        db.session.commit()
+        return "Clocked Out ✅"
+
+    else:
+        return "Already clocked in and out today ℹ️"
+    
+@app.route("/admin/reset-device/<int:user_id>", methods=["POST"])
+@login_required
+def reset_device(user_id):
+    user = User.query.get_or_404(user_id)
+    user.device_id = None
+    db.session.commit()
+    flash("Device reset. Employee must re-scan.", "success")
+    return redirect(url_for("api.manage_devices"))
+    
+
+def admin_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not getattr(current_user, "is_admin", False):
+            abort(403)
+        return func(*args, **kwargs)
+    return wrapper
+
+# Show list of employees and device IDs
+@api_bp.route("/admin/devices")
+@login_required
+@admin_required
+def manage_devices():
+    employees = User.query.all()
+    return render_template("admin_devices.html", employees=employees)

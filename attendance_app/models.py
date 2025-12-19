@@ -14,8 +14,9 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(128))
     role = db.Column(db.String(20), default='employee')
     salary_per_month = db.Column(db.Float, default=0.0)
-    device_id = db.Column(db.String(128), unique=True, nullable=True)
+    device_id = db.Column(db.String(100), unique=True, nullable=True)
     serial_number = db.Column(db.String(255), unique=True, nullable=True)
+    is_admin = db.Column(db.Boolean, default=False)
 
     def set_password(self, password):
         self.password = password

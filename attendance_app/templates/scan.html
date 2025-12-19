@@ -48,7 +48,7 @@
     <p>Use this page to test scanning QR codes for clock in/out.</p>
 
     <div class="qr-container">
-        <img class="qr-code" src="{{ url_for('live_qr') }}" alt="QR Code">
+        <img src="{{ url_for('api.qr_image') }}" width="300">
     </div>
 
     {% if token %}
