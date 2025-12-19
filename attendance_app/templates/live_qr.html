@@ -10,7 +10,7 @@
 
 <script>
 function refreshQR() {
-    fetch("/admin/live-qr")
+    fetch("{{ url_for('live_qr') }}")
         .then(res => res.json())
         .then(data => {
             document.getElementById("qrImage").src =

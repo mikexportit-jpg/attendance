@@ -1820,3 +1820,8 @@ def admin_required(func):
 def manage_devices():
     employees = User.query.all()
     return render_template("admin_devices.html", employees=employees)
+
+@app.route("/live-qr-token")
+def public_live_qr():
+    token = secrets.token_urlsafe(16)
+    return jsonify({"token": token})
