@@ -1668,15 +1668,12 @@ def daily_report_excel():
 @app.route("/admin/live-qr")
 @login_required
 def live_qr():
-    token = secrets.token_urlsafe(32)
-
-    qr = QRCodeToken(token=token)
-    db.session.add(qr)
-    db.session.commit()
-
-    return jsonify({
-        "token": token
-    })
+    """
+    Returns a unique token for QR code generation.
+    This token can be used to identify a clock-in/out session.
+    """
+    token = secrets.token_urlsafe(16)  # Random unique token
+    return jsonify({"token": token})
 
 @app.route("/admin/qr")
 @login_required
